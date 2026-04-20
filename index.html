@@ -2,16 +2,18 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>LuaSense | Deobfuscator & Editor</title>
+    <title>LuaSense | Serverless Deobfuscator</title>
     <link rel="stylesheet" href="style.css">
+    <!-- Monaco Editor -->
     <script src="https://cloudflare.com"></script>
+    <!-- Fengari (Lua VM for Browser) -->
+    <script src="https://unpkg.com"></script>
 </head>
 <body>
     <nav>
-        <h2>LuaSense <span>v1.0</span></h2>
+        <h2>LuaSense <span>v1.0 (Client-Side)</span></h2>
         <div class="actions">
-            <button onclick="runDeobfuscator()" class="btn-primary">Deobfuscate</button>
-            <button onclick="obfuscateCode()">Obfuscate</button>
+            <button onclick="runSimulation()" class="btn-primary">Deobfuscate</button>
         </div>
     </nav>
 
@@ -23,30 +25,69 @@
     </main>
 
     <script>
+        // 1. Setup Monaco Editor
         require.config({ paths: { 'vs': 'https://cloudflare.com' }});
         require(['vs/editor/editor.main'], function() {
             window.inputEditor = monaco.editor.create(document.getElementById('input-editor'), {
-                value: "-- Paste obfuscated code here",
-                language: 'lua',
-                theme: 'vs-dark'
-            });
-            window.outputEditor = monaco.editor.create(document.getElementById('output-editor'), {
-                value: "-- Clean code will appear here",
+                value: "-- Paste obfuscated script here",
                 language: 'lua',
                 theme: 'vs-dark',
-                readOnly: true
+                automaticLayout: true
+            });
+            window.outputEditor = monaco.editor.create(document.getElementById('output-editor'), {
+                value: "-- Decrypted source will appear here",
+                language: 'lua',
+                theme: 'vs-dark',
+                readOnly: true,
+                automaticLayout: true
             });
         });
 
-        async function runDeobfuscator() {
-            const code = window.inputEditor.getValue();
-            const response = await fetch('/api/deobfuscate', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ code })
-            });
-            const result = await response.json();
-            window.outputEditor.setValue(result.output);
+        // 2. The Deobfuscation Logic (Running in Browser)
+        function runSimulation() {
+            const userCode = window.inputEditor.getValue();
+            const L = fengari.lauxlib.luaL_newstate();
+            fengari.lualib.luaL_openlibs(L);
+
+            // Define the simulation script that hooks 'loadstring'
+            const simulationHook = `
+                local captured = {}
+                
+                -- Mock Roblox/Global Environment basics to prevent early crashes
+                getfenv = function() return {} end
+                setfenv = function() end
+                wait = function() end
+                script = {}
+                
+                -- The Hook
+                local old_loadstring = loadstring
+                loadstring = function(str)
+                    table.insert(captured, "-- [CAPTURED LAYER] --\\n" .. str)
+                    return function() end -- Return dummy function to keep script running
+                end
+                
+                -- Run User Code safely
+                local status, err = pcall(function()
+                    ${userCode}
+                end)
+
+                if #captured > 0 then
+                    return table.concat(captured, "\\n\\n")
+                else
+                    return "-- Simulation finished. No loadstring calls detected.\\n-- Error Log: " .. tostring(err)
+                end
+            `;
+
+            try {
+                // Execute the Lua script inside the JS VM
+                fengari.lauxlib.luaL_dostring(L, fengari.to_luastring(simulationHook));
+                
+                // Get result from the stack
+                const result = fengari.to_jsstring(fengari.lua.lua_tostring(L, -1));
+                window.outputEditor.setValue(result);
+            } catch (e) {
+                window.outputEditor.setValue("-- VM Crash: " + e.message);
+            }
         }
     </script>
 </body>
