@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>LuaSense | Deobfuscator & Editor</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cloudflare.com"></script>
+</head>
+<body>
+    <nav>
+        <h2>LuaSense <span>v1.0</span></h2>
+        <div class="actions">
+            <button onclick="runDeobfuscator()" class="btn-primary">Deobfuscate</button>
+            <button onclick="obfuscateCode()">Obfuscate</button>
+        </div>
+    </nav>
+
+    <main>
+        <div class="editor-container">
+            <div id="input-editor" class="editor"></div>
+            <div id="output-editor" class="editor"></div>
+        </div>
+    </main>
+
+    <script>
+        require.config({ paths: { 'vs': 'https://cloudflare.com' }});
+        require(['vs/editor/editor.main'], function() {
+            window.inputEditor = monaco.editor.create(document.getElementById('input-editor'), {
+                value: "-- Paste obfuscated code here",
+                language: 'lua',
+                theme: 'vs-dark'
+            });
+            window.outputEditor = monaco.editor.create(document.getElementById('output-editor'), {
+                value: "-- Clean code will appear here",
+                language: 'lua',
+                theme: 'vs-dark',
+                readOnly: true
+            });
+        });
+
+        async function runDeobfuscator() {
+            const code = window.inputEditor.getValue();
+            const response = await fetch('/api/deobfuscate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ code })
+            });
+            const result = await response.json();
+            window.outputEditor.setValue(result.output);
+        }
+    </script>
+</body>
+</html>
