@@ -1,0 +1,8 @@
+body { margin: 0; background: #1e1e1e; color: white; font-family: sans-serif; display: flex; flex-direction: column; height: 100vh; }
+nav { padding: 1rem; background: #252526; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #333; }
+h2 { margin: 0; font-size: 1.2rem; }
+h2 span { color: #666; font-size: 0.8rem; }
+.actions button { padding: 8px 16px; cursor: pointer; background: #333; color: white; border: none; border-radius: 4px; }
+.actions .btn-primary { background: #0e639c; }
+.editor-container { flex: 1; display: flex; }
+.editor { width: 50%; height: 100%; border-right: 1px solid #333; }
